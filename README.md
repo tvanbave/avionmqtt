@@ -1,6 +1,6 @@
 # avionmqtt
 
-A python library to control bridge between Avi-on based lights and Home Assistant using MQTT
+A python library to bridge between Avi-on based lights and Home Assistant using MQTT
 
 ## support
 This should support any devices that uses Avi-on's technology, including Halo Home and GE branded BLE lights (both discontinued, but both supported by Avi-on's cloud infra and mobile apps).
