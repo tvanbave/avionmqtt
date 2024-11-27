@@ -354,7 +354,7 @@ async def main():
                         running = False
 
                     except BleakError as e:
-                        print(f"mesh: Error connecting to {mac}")
+                        print("mesh: Error connecting to device")
 
                     except Exception as e:
                         print("mesh: Exception")
