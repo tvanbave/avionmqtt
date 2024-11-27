@@ -1,4 +1,3 @@
-import halohome
 from argparse import ArgumentParser
 import asyncio
 import yaml
@@ -13,6 +12,7 @@ from enum import Enum
 import signal
 import sys
 from aiorun import run
+from avionhttp import http_list_devices
 
 MQTT_RETRY_INTERVAL = 5
 CHARACTERISTIC_LOW = "c4edc000-9daf-11e3-8003-00025b000b00"
@@ -90,7 +90,9 @@ def settings_get(file: str):
             print(exc)
 
 
-async def mqtt_register(client: aiomqtt.Client, avid: int, name: str):
+async def mqtt_register(client: aiomqtt.Client, entity: dict):
+    avid = entity["avid"]
+    name = entity["name"]
     await client.publish(
         f"homeassistant/light/avid_{avid}/config",
         json.dumps(
@@ -294,7 +296,7 @@ async def main():
     mqtt_settings = settings["mqtt"]
 
     print("avion: Fetching devices")
-    locations = await halohome.list_devices(avion_settings["email"], avion_settings["password"])
+    locations = await http_list_devices(avion_settings["email"], avion_settings["password"])
     assert len(locations) == 1
     location = locations[0]
 
@@ -314,10 +316,10 @@ async def main():
             async with mqtt:
                 if settings["groups"]["import"]:
                     for group in location["groups"]:
-                        await mqtt_register(mqtt, group["group_id"], group["group_name"])
+                        await mqtt_register(mqtt, group)
                 if settings["devices"]["import"]:
                     for device in location["devices"]:
-                        await mqtt_register(mqtt, device["device_id"], device["device_name"])
+                        await mqtt_register(mqtt, device)
 
                 # now connect the mesh
                 print("mesh: Connecting to mesh")
@@ -345,10 +347,8 @@ async def main():
                             key = csrmesh.crypto.generate_key(
                                 location["passphrase"].encode("ascii") + b"\x00\x4d\x43\x50"
                             )
-                            print("subscribe")
                             await mesh_subscribe(mqtt, mesh, key)
                             await mqtt_subscribe(mqtt, mesh, key)
-                            print("done?")
 
                     except asyncio.CancelledError:
                         running = False
@@ -362,7 +362,7 @@ async def main():
                         print(e)
 
                     finally:
-                        print("mesh done")
+                        print("mesh: Done")
                         if mesh and mesh.is_connected:
                             await mesh.disconnect()
                             print(f"mesh: Disconnected from {mac}")
@@ -371,7 +371,7 @@ async def main():
             print(f"mqtt: Connection lost; Reconnecting in {MQTT_RETRY_INTERVAL} seconds ...")
             await asyncio.sleep(MQTT_RETRY_INTERVAL)
         finally:
-            print("mqtt done")
+            print("mqtt: Done")
 
 
 # create a new event loop (low-level api)
