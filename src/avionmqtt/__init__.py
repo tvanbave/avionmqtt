@@ -90,29 +90,38 @@ def settings_get(file: str):
             print(exc)
 
 
+# 167: smart switch, 97: smart dimmer, 162 standard light, 134 A19
+CAPABILITIES = {"dimming": {0, 162, 134, 97}, "color_temp": {0, 162, 134}}
+
+
 async def mqtt_register(client: aiomqtt.Client, entity: dict):
+    product_id = entity["product_id"]
+    pid = entity["pid"]
     avid = entity["avid"]
     name = entity["name"]
+
+    config = {
+        "component": "light",
+        "name": name,
+        "object_id": f"avid_{avid}",
+        "unique_id": pid,
+        "schema": "json",
+        "payload_off": "OFF",
+        "payload_on": "ON",
+        "brightness": product_id in CAPABILITIES["dimming"],
+        "color_mode": product_id in CAPABILITIES["color_temp"],
+        "effect": False,
+        "retain": False,
+        "state_topic": f"hmd/light/avid/{avid}/state",
+        "json_attributes_topic": f"hmd/light/avid/{avid}/attributes",
+        "command_topic": f"hmd/light/avid/{avid}/command",
+    }
+
+    if product_id in CAPABILITIES["color_temp"]:
+        config["supported_color_modes"] = ["color_temp"]
     await client.publish(
         f"homeassistant/light/avid_{avid}/config",
-        json.dumps(
-            {
-                "component": "light",
-                "name": name,
-                "object_id": f"avid_{avid}",
-                "schema": "json",
-                "payload_off": "OFF",
-                "payload_on": "ON",
-                "brightness": True,
-                "color_mode": True,
-                "supported_color_modes": ["color_temp"],
-                "effect": False,
-                "retain": False,
-                "state_topic": f"hmd/light/avid/{avid}/state",
-                "json_attributes_topic": f"hmd/light/avid/{avid}/attributes",
-                "command_topic": f"hmd/light/avid/{avid}/command",
-            }
-        ),
+        json.dumps(config),
     )
 
 
@@ -320,6 +329,10 @@ async def main():
                 if settings["devices"]["import"]:
                     for device in location["devices"]:
                         await mqtt_register(mqtt, device)
+                if "all" in settings:
+                    await mqtt_register(
+                        mqtt, {"pid": "avion_all", "product_id": 0, "avid": 0, "name": settings["all"]["name"]}
+                    )
 
                 # now connect the mesh
                 print("mesh: Connecting to mesh")

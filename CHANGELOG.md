@@ -8,3 +8,6 @@ Added basic shutdown handling
 
 ## 1.2.0 2024-11-26
 Replaced dependency on halohome since it only provided limited support for API calls, which will need to be extended further.
+
+## 1.2.3 2024-11-26
+Added several small improvements, leaving the package in a reasonable usable state.

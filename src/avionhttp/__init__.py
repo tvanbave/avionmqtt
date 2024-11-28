@@ -43,10 +43,12 @@ async def http_load_devices(host: str, auth_token: str, location_id: str, timeou
         if raw_device["type"] != "device":
             continue
 
+        pid = raw_device["pid"]
+        product_id = raw_device["product_id"]
         avid = raw_device["avid"]
         name = raw_device["name"]
         mac_address = util_format_mac_address(raw_device["friendly_mac_address"])
-        device = {"avid": avid, "name": name, "mac_address": mac_address}
+        device = {"pid": pid, "product_id": product_id, "avid": avid, "name": name, "mac_address": mac_address}
         devices.append(device)
 
     return devices
@@ -58,9 +60,10 @@ async def http_load_groups(host: str, auth_token: str, location_id: str, timeout
     groups = []
 
     for raw_group in raw_groups:
+        pid = raw_group["pid"]
         avid = raw_group["avid"]
         name = raw_group["name"]
-        group = {"avid": avid, "name": name}
+        group = {"pid": pid, "product_id": 0, "avid": avid, "name": name}
         groups.append(group)
 
     return groups

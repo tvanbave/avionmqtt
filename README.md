@@ -7,7 +7,13 @@ This should support any devices that uses Avi-on's technology, including Halo Ho
 
 # features
 - creates lights for devices and groups in Home Assistant
+  - supports creating meta lights such as for 'all', usefull for automation of color temperature
 - supports changing brightness and color temperature
+  - for:
+    - individidual devices
+    - groups
+    - the entire mesh at once
+  - color temperature can be set *without* turning on the light
 - polls the whole network on startup to get the current state of each device
 - updates Home Assistant whenever devices are updated externally 
 
