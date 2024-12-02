@@ -38,9 +38,22 @@ mqtt:
 
 devices:
     import: true
+    # if set, include only these pids when importing devices
+    include:
+      - abcde...
+      - bcdef...
+    # if set, exclude these pids when importing devices
+    exclude:
+      - abcde...
+      - bcdef...
+    # if set, automatically adds all devices part of a group to the exclude list
+    exclude_in_group: true
+
 
 groups:
     import: true
+    include:
+    exclude:
 
 ```
 

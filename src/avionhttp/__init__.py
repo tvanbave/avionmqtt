@@ -54,6 +54,12 @@ async def http_load_devices(host: str, auth_token: str, location_id: str, timeou
     return devices
 
 
+async def http_get_devices_in_group(host: str, auth_token: str, group_id: int, timeout: int):
+    response = await http_make_request(host, f"groups/{group_id}", auth_token=auth_token, timeout=timeout)
+    raw_response = response["group"]
+    return raw_response["devices"]
+
+
 async def http_load_groups(host: str, auth_token: str, location_id: str, timeout: int) -> List[dict]:
     response = await http_make_request(host, f"locations/{location_id}/groups", auth_token=auth_token, timeout=timeout)
     raw_groups = response["groups"]
@@ -63,7 +69,8 @@ async def http_load_groups(host: str, auth_token: str, location_id: str, timeout
         pid = raw_group["pid"]
         avid = raw_group["avid"]
         name = raw_group["name"]
-        group = {"pid": pid, "product_id": 0, "avid": avid, "name": name}
+        devices = await http_get_devices_in_group(host, auth_token, pid, timeout)
+        group = {"pid": pid, "product_id": 0, "avid": avid, "name": name, "devices": devices}
         groups.append(group)
 
     return groups

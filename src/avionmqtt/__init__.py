@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import asyncio
+from typing import List
 import yaml
 import json
 import aiomqtt
@@ -17,6 +18,9 @@ from avionhttp import http_list_devices
 MQTT_RETRY_INTERVAL = 5
 CHARACTERISTIC_LOW = "c4edc000-9daf-11e3-8003-00025b000b00"
 CHARACTERISTIC_HIGH = "c4edc000-9daf-11e3-8004-00025b000b00"
+
+CAPABILITIES = {"dimming": {0, 162, 134, 97}, "color_temp": {0, 162, 134}}
+PRODUCT_NAMES = {0: "Group", 162: "MicroEdge (HLB)", 97: "Smart Dimmer", 134: "Smart Bulb (A19)", 167: "Smart Switch"}
 
 
 class Verb(Enum):
@@ -90,19 +94,15 @@ def settings_get(file: str):
             print(exc)
 
 
-# 167: smart switch, 97: smart dimmer, 162 standard light, 134 A19
-CAPABILITIES = {"dimming": {0, 162, 134, 97}, "color_temp": {0, 162, 134}}
-
-
-async def mqtt_register(client: aiomqtt.Client, entity: dict):
+async def mqtt_register(mqtt: aiomqtt.Client, entity: dict):
     product_id = entity["product_id"]
     pid = entity["pid"]
     avid = entity["avid"]
     name = entity["name"]
 
+    # https://www.home-assistant.io/integrations/light.mqtt/
     config = {
         "component": "light",
-        "name": name,
         "object_id": f"avid_{avid}",
         "unique_id": pid,
         "schema": "json",
@@ -111,18 +111,51 @@ async def mqtt_register(client: aiomqtt.Client, entity: dict):
         "brightness": product_id in CAPABILITIES["dimming"],
         "color_mode": product_id in CAPABILITIES["color_temp"],
         "effect": False,
-        "retain": False,
+        "retain": True,
         "state_topic": f"hmd/light/avid/{avid}/state",
         "json_attributes_topic": f"hmd/light/avid/{avid}/attributes",
         "command_topic": f"hmd/light/avid/{avid}/command",
+        "device": {
+            "identifiers": [pid],
+            "name": name,
+            "manufacturer": "Avi-on",
+            "model": PRODUCT_NAMES.get(product_id, "Unknown"),
+            "serial_number": pid,
+        },
     }
 
     if product_id in CAPABILITIES["color_temp"]:
         config["supported_color_modes"] = ["color_temp"]
-    await client.publish(
+    await mqtt.publish(
         f"homeassistant/light/avid_{avid}/config",
         json.dumps(config),
     )
+
+
+async def mqtt_register_category(settings: dict, list: List[dict], mqtt: aiomqtt.Client):
+    if settings["import"]:
+        include = settings.get("include", None)
+        exclude = settings.get("exclude", {})
+        print("exclude")
+        print(exclude)
+        for entity in list:
+            pid = entity["pid"]
+            if (include is not None and pid in include) or pid not in exclude:
+                await mqtt_register(mqtt, entity)
+
+
+async def mqtt_register_lights(settings: dict, location: dict, mqtt: aiomqtt.Client):
+    await mqtt_register_category(settings["groups"], location["groups"], mqtt)
+
+    if settings["devices"].get("exclude_in_group"):
+        exclude = settings["devices"].get("exclude", set())
+        for group in location["groups"]:
+            devices = group["devices"]
+            exclude |= set(devices)
+        settings["devices"]["exclude"] = exclude
+    await mqtt_register_category(settings["devices"], location["devices"], mqtt)
+    if "all" in settings:
+        await mqtt_register(mqtt, {"pid": "avion_all", "product_id": 0, "avid": 0, "name": settings["all"]["name"]})
 
 
 def create_packet(target_id: int, verb: Verb, noun: Noun, value_bytes: bytearray) -> bytes:
@@ -208,6 +241,7 @@ async def mqtt_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str):
 
 
 async def mqtt_send_state(mqtt: aiomqtt.Client, message: dict):
+    # TODO: Only send update if we've actually registered this device
     print(f"mqtt: sending update for {message}")
     avid = message["avid"]
     state_topic = f"hmd/light/avid/{avid}/state"
@@ -323,17 +357,8 @@ async def main():
         try:
             print("mqtt: Connecting to broker")
             async with mqtt:
-                if settings["groups"]["import"]:
-                    for group in location["groups"]:
-                        await mqtt_register(mqtt, group)
-                if settings["devices"]["import"]:
-                    for device in location["devices"]:
-                        await mqtt_register(mqtt, device)
-                if "all" in settings:
-                    await mqtt_register(
-                        mqtt, {"pid": "avion_all", "product_id": 0, "avid": 0, "name": settings["all"]["name"]}
-                    )
-
+                # register the lights
+                await mqtt_register_lights(settings, location, mqtt)
                 # now connect the mesh
                 print("mesh: Connecting to mesh")
                 while running:
@@ -360,7 +385,9 @@ async def main():
                             key = csrmesh.crypto.generate_key(
                                 location["passphrase"].encode("ascii") + b"\x00\x4d\x43\x50"
                             )
+                            # subscribe to updates from the mesh
                             await mesh_subscribe(mqtt, mesh, key)
+                            # subscribe to commands from mqtt (this also keeps the loop going)
                             await mqtt_subscribe(mqtt, mesh, key)
 
                     except asyncio.CancelledError:
