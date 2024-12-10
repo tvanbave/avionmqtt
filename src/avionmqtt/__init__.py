@@ -119,7 +119,7 @@ async def mqtt_register(mqtt: aiomqtt.Client, entity: dict):
             "identifiers": [pid],
             "name": name,
             "manufacturer": "Avi-on",
-            "model": PRODUCT_NAMES.get(product_id, "Unknown"),
+            "model": PRODUCT_NAMES.get(product_id, f"Unknown product ({product_id})"),
             "serial_number": pid,
         },
     }

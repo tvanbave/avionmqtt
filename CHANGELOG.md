@@ -22,3 +22,6 @@ Added several small improvements, leaving the package in a reasonable usable sta
 
 ## 1.3.4 2024-12-09
 - Remove use of retained messages and subcribe to Home Assistant's birth message instead
+
+## 1.3.6 2024-12-09
+- Add the product type to the name when the actual product name is unknown
