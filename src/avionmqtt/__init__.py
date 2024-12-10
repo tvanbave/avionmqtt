@@ -111,7 +111,7 @@ async def mqtt_register(mqtt: aiomqtt.Client, entity: dict):
         "brightness": product_id in CAPABILITIES["dimming"],
         "color_mode": product_id in CAPABILITIES["color_temp"],
         "effect": False,
-        "retain": True,
+        "retain": False,
         "state_topic": f"hmd/light/avid/{avid}/state",
         "json_attributes_topic": f"hmd/light/avid/{avid}/attributes",
         "command_topic": f"hmd/light/avid/{avid}/command",
@@ -231,13 +231,18 @@ async def mesh_send(avid: int, raw_payload: str, mqtt: aiomqtt.Client, mesh: Ble
             await mqtt_send_state(mqtt, parsed)
 
 
-async def mqtt_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str):
+async def mqtt_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str, settings: dict, location: dict):
     await mqtt.subscribe("hmd/light/avid/+/command")
+    await mqtt.subscribe("homeassistant/status")
     async for message in mqtt.messages:
-        json = message.payload.decode()
-        avid = int(message.topic.value.split("/")[3])
-        print(f"mqtt: received {json} for {avid}")
-        await mesh_send(avid, json, mqtt, mesh, key)
+        if message.topic.matches("homeassistant/status"):
+            if message.payload == "online":
+                await mqtt_register_lights(settings, location, mqtt)
+        else:
+            json = message.payload.decode()
+            avid = int(message.topic.value.split("/")[3])
+            print(f"mqtt: received {json} for {avid}")
+            await mesh_send(avid, json, mqtt, mesh, key)
 
 
 async def mqtt_send_state(mqtt: aiomqtt.Client, message: dict):
@@ -388,7 +393,7 @@ async def main():
                             # subscribe to updates from the mesh
                             await mesh_subscribe(mqtt, mesh, key)
                             # subscribe to commands from mqtt (this also keeps the loop going)
-                            await mqtt_subscribe(mqtt, mesh, key)
+                            await mqtt_subscribe(mqtt, mesh, key, settings, location)
 
                     except asyncio.CancelledError:
                         running = False
