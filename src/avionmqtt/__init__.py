@@ -145,6 +145,7 @@ async def mqtt_register_category(settings: dict, list: List[dict], mqtt: aiomqtt
 
 
 async def mqtt_register_lights(settings: dict, location: dict, mqtt: aiomqtt.Client):
+    print("mqtt: Registering devices")
     await mqtt_register_category(settings["groups"], location["groups"], mqtt)
 
     if settings["devices"].get("exclude_in_group"):
@@ -232,13 +233,16 @@ async def mesh_send(avid: int, raw_payload: str, mqtt: aiomqtt.Client, mesh: Ble
 
 
 async def mqtt_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str, settings: dict, location: dict):
-    await mqtt.subscribe("hmd/light/avid/+/command")
     await mqtt.subscribe("homeassistant/status")
+    await mqtt.subscribe("hmd/light/avid/+/command")
     async for message in mqtt.messages:
         if message.topic.matches("homeassistant/status"):
-            if message.payload == "online":
+            if message.payload.decode() == "online":
+                print("mqtt: Home Assistant back online")
                 await mqtt_register_lights(settings, location, mqtt)
-        else:
+            else:
+                print("mqtt: Home Assistant offline")
+        elif message.topic.matches("hmd/light/avid/+/command"):
             json = message.payload.decode()
             avid = int(message.topic.value.split("/")[3])
             print(f"mqtt: received {json} for {avid}")
@@ -256,11 +260,13 @@ async def mqtt_send_state(mqtt: aiomqtt.Client, message: dict):
             "state": "ON" if brightness != 0 else "OFF",
             "brightness": brightness,
         }
-        await mqtt.publish(state_topic, json.dumps(payload))
     elif "color_temp" in message:
         color_temp = message["color_temp"]
         payload = {"color_temp": color_temp}
-        await mqtt.publish(state_topic, json.dumps(payload))
+    else:
+        return
+
+    await mqtt.publish(state_topic, json.dumps(payload), retain=True)
 
 
 async def mac_ordered_by_rssi():

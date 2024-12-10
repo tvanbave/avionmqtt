@@ -17,8 +17,8 @@ Added several small improvements, leaving the package in a reasonable usable sta
 - Add include and exclude options for registering devices
 - Add option to automatically exclude devices part of a group
 
-## 1.3.0 2024-12-09
+## 1.3.1 2024-12-09
 - Add service install script
 
-## 1.3.0 2024-12-09
+## 1.3.4 2024-12-09
 - Remove use of retained messages and subcribe to Home Assistant's birth message instead
