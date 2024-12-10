@@ -12,7 +12,10 @@ Replaced dependency on halohome since it only provided limited support for API c
 ## 1.2.3 2024-11-26
 Added several small improvements, leaving the package in a reasonable usable state.
 
-## 1.3.0 2024-12-
+## 1.3.0 2024-12-01
 - Create proper devices instead of dangling entities
 - Add include and exclude options for registering devices
 - Add option to automatically exclude devices part of a group
+
+## 1.3.0 2024-12-9
+- Add service install script

@@ -15,17 +15,19 @@ This should support any devices that uses Avi-on's technology, including Halo Ho
     - the entire mesh at once
   - color temperature can be set *without* turning on the light
 - polls the whole network on startup to get the current state of each device
-- updates Home Assistant whenever devices are updated externally 
+- updates Home Assistant whenever devices are updated externally
 
 # how to use
 
 ```bash
-# if bluepy fails to compile, try installing libglib2.0-dev first (apt-get install libglib2.0-dev)  
-pip install avionmqtt 
+# if bluepy fails to compile, try installing libglib2.0-dev first (apt-get install libglib2.0-dev)
+pip install avionmqtt
 python -m avionmqtt -s settings.yaml
 ```
+ ## service install script
+ See [Running as a service.md](resources/Running%20as%20a%20service.md) for how to install this as a service using systemd.
 
-# settings.yaml
+## settings.yaml
 
 ```yaml
 avion:
@@ -50,14 +52,12 @@ devices:
     # if set, automatically adds all devices part of a group to the exclude list
     exclude_in_group: true
 
-
 groups:
     import: true
     include:
     exclude:
 
 ```
-
 
 # acknowledgements
 This project would not have been possible without the original work done in https://github.com/nkaminski/csrmesh and https://github.com/nayaverdier/halohome
