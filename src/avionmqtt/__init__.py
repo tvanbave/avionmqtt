@@ -94,7 +94,7 @@ def settings_get(file: str):
             print(exc)
 
 
-async def mqtt_register(mqtt: aiomqtt.Client, entity: dict):
+async def mqtt_register(use_single_device: bool, mqtt: aiomqtt.Client, entity: dict):
     product_id = entity["product_id"]
     pid = entity["pid"]
     avid = entity["avid"]
@@ -115,14 +115,18 @@ async def mqtt_register(mqtt: aiomqtt.Client, entity: dict):
         "state_topic": f"hmd/light/avid/{avid}/state",
         "json_attributes_topic": f"hmd/light/avid/{avid}/attributes",
         "command_topic": f"hmd/light/avid/{avid}/command",
-        "device": {
+    }
+    if use_single_device:
+        config["name"] = name
+        config["device"] = {"identifiers": ["avionmqtt"], "name": "Avi-on MQTT Bridge"}
+    else:
+        config["device"] = {
             "identifiers": [pid],
             "name": name,
             "manufacturer": "Avi-on",
             "model": PRODUCT_NAMES.get(product_id, f"Unknown product ({product_id})"),
             "serial_number": pid,
-        },
-    }
+        }
 
     if product_id in CAPABILITIES["color_temp"]:
         config["supported_color_modes"] = ["color_temp"]
@@ -132,7 +136,7 @@ async def mqtt_register(mqtt: aiomqtt.Client, entity: dict):
     )
 
 
-async def mqtt_register_category(settings: dict, list: List[dict], mqtt: aiomqtt.Client):
+async def mqtt_register_category(use_single_device: bool, settings: dict, list: List[dict], mqtt: aiomqtt.Client):
     if settings["import"]:
         include = settings.get("include", None)
         exclude = settings.get("exclude", {})
@@ -141,12 +145,13 @@ async def mqtt_register_category(settings: dict, list: List[dict], mqtt: aiomqtt
         for entity in list:
             pid = entity["pid"]
             if (include is not None and pid in include) or pid not in exclude:
-                await mqtt_register(mqtt, entity)
+                await mqtt_register(use_single_device, mqtt, entity)
 
 
 async def mqtt_register_lights(settings: dict, location: dict, mqtt: aiomqtt.Client):
     print("mqtt: Registering devices")
-    await mqtt_register_category(settings["groups"], location["groups"], mqtt)
+    use_single_device = settings.get("single_device", False)
+    await mqtt_register_category(use_single_device, settings["groups"], location["groups"], mqtt)
 
     if settings["devices"].get("exclude_in_group"):
         exclude = settings["devices"].get("exclude", set())
@@ -154,9 +159,11 @@ async def mqtt_register_lights(settings: dict, location: dict, mqtt: aiomqtt.Cli
             devices = group["devices"]
             exclude |= set(devices)
         settings["devices"]["exclude"] = exclude
-    await mqtt_register_category(settings["devices"], location["devices"], mqtt)
+    await mqtt_register_category(use_single_device, settings["devices"], location["devices"], mqtt)
     if "all" in settings:
-        await mqtt_register(mqtt, {"pid": "avion_all", "product_id": 0, "avid": 0, "name": settings["all"]["name"]})
+        await mqtt_register(
+            use_single_device, mqtt, {"pid": "avion_all", "product_id": 0, "avid": 0, "name": settings["all"]["name"]}
+        )
 
 
 def create_packet(target_id: int, verb: Verb, noun: Noun, value_bytes: bytearray) -> bytes:

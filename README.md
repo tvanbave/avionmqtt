@@ -41,15 +41,15 @@ mqtt:
 
 devices:
     import: true
-    # if set, include only these pids when importing devices
+    # If set, include only these pids when importing devices
     include:
       - abcde...
       - bcdef...
-    # if set, exclude these pids when importing devices
+    # If set, exclude these pids when importing devices
     exclude:
       - abcde...
       - bcdef...
-    # if set, automatically adds all devices part of a group to the exclude list
+    # If set, automatically adds all devices part of a group to the exclude list
     exclude_in_group: true
 
 groups:
@@ -57,6 +57,8 @@ groups:
     include:
     exclude:
 
+# Controls if a single device, or one per light is created. Defaults to false.
+single_device: true
 ```
 
 # acknowledgements
