@@ -59,6 +59,15 @@ groups:
 
 # Controls if a single device, or one per light is created. Defaults to false.
 single_device: true
+
+# If you need to add additional overrides to dimmable or color_temp capabilities, then you can do so here.
+# If new products are discovered to work with this library, create an issue on github so that it can be added in.
+capabilities_overrides:
+  dimming:
+    - 123
+    - 234
+  color_temp:
+    - 123
 ```
 
 # acknowledgements

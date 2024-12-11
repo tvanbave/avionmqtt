@@ -352,12 +352,26 @@ async def mesh_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str):
     await mesh_read_all(mesh, key)
 
 
+def apply_overrides_from_settings(settings: dict):
+    capabilities_overrides = settings.get("capabilities_overrides")
+    if capabilities_overrides is not None:
+        dimming_overrides = capabilities_overrides.get("dimming")
+        if dimming_overrides is not None:
+            for product_id in dimming_overrides:
+                CAPABILITIES["dimming"].add(product_id)
+        color_temp_overrides = capabilities_overrides.get("color_temp")
+        if color_temp_overrides is not None:
+            for product_id in color_temp_overrides:
+                CAPABILITIES["color_temp"].add(product_id)
+
+
 async def main():
     parser = ArgumentParser()
     parser.add_argument("-s", "--settings", dest="settings", help="yaml file to read settings from", metavar="FILE")
     args = parser.parse_args()
 
     settings = settings_get(args.settings)
+    apply_overrides_from_settings(settings)
     avion_settings = settings["avion"]
     mqtt_settings = settings["mqtt"]
 
