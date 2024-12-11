@@ -235,6 +235,7 @@ async def mesh_send(avid: int, raw_payload: str, mqtt: aiomqtt.Client, mesh: Ble
 async def mqtt_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str, settings: dict, location: dict):
     await mqtt.subscribe("homeassistant/status")
     await mqtt.subscribe("hmd/light/avid/+/command")
+    await mqtt.subscribe("avionmqtt")
     async for message in mqtt.messages:
         if message.topic.matches("homeassistant/status"):
             if message.payload.decode() == "online":
@@ -247,6 +248,10 @@ async def mqtt_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str, sett
             avid = int(message.topic.value.split("/")[3])
             print(f"mqtt: received {json} for {avid}")
             await mesh_send(avid, json, mqtt, mesh, key)
+        elif message.topic.matches("avionmqtt"):
+            if message.payload.decode() == "poll_mesh":
+                print("mqtt: polling mesh")
+                await mesh_read_all(mesh, key)
 
 
 async def mqtt_send_state(mqtt: aiomqtt.Client, message: dict):
