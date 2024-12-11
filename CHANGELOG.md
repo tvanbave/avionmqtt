@@ -30,3 +30,6 @@ Added several small improvements, leaving the package in a reasonable usable sta
 - add support for polling mesh via mqtt
 - add support for using a single device in Home Assistant
 - add support for overriding the device capabilities via the settings
+
+## 1.3.8 2024-12-09
+- add graceful handling of parsing errors

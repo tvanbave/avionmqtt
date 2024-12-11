@@ -295,26 +295,28 @@ def mesh_parse_data(target_id: int, data: bytearray) -> dict:
         print(f"empty data")
         return
 
-    verb = Verb(data[0])
-    noun = Noun(data[1])
+    try:
+        verb = Verb(data[0])
+        noun = Noun(data[1])
 
-    if verb == Verb.WRITE:
-        target_id = target_id if target_id else int.from_bytes(bytes([data[2], data[3]]), byteorder="big")
-        value_bytes = data[4:]
-    else:
-        value_bytes = data[2:]
+        if verb == Verb.WRITE:
+            target_id = target_id if target_id else int.from_bytes(bytes([data[2], data[3]]), byteorder="big")
+            value_bytes = data[4:]
+        else:
+            value_bytes = data[2:]
 
-    print(f"mesh: target_id({target_id}), verb({verb}), noun({noun}), value:{value_bytes})")
+        print(f"mesh: target_id({target_id}), verb({verb}), noun({noun}), value:{value_bytes})")
 
-    if noun == Noun.DIMMING:
-        brightness = int.from_bytes(value_bytes[1:2], byteorder="big")
-        return {"avid": target_id, "brightness": brightness}
-    elif noun == Noun.COLOR:
-        temp = int.from_bytes(value_bytes[2:4], byteorder="big")
-        return {"avid": target_id, "color_temp": temp}
-
-    else:
-        print(f"unknown noun {noun}")
+        if noun == Noun.DIMMING:
+            brightness = int.from_bytes(value_bytes[1:2], byteorder="big")
+            return {"avid": target_id, "brightness": brightness}
+        elif noun == Noun.COLOR:
+            temp = int.from_bytes(value_bytes[2:4], byteorder="big")
+            return {"avid": target_id, "color_temp": temp}
+        else:
+            print(f"unknown noun {noun}")
+    except Exception as e:
+        print(f"mesh: Exception parsing {data} from {target_id}")
 
 
 # BLEBridge.decryptMessage
