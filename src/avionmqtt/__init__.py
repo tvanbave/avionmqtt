@@ -20,7 +20,14 @@ CHARACTERISTIC_LOW = "c4edc000-9daf-11e3-8003-00025b000b00"
 CHARACTERISTIC_HIGH = "c4edc000-9daf-11e3-8004-00025b000b00"
 
 CAPABILITIES = {"dimming": {0, 162, 134, 97, 137}, "color_temp": {0, 162, 134, 137}}
-PRODUCT_NAMES = {0: "Group", 162: "MicroEdge (HLB)", 97: "Smart Dimmer", 134: "Smart Bulb (A19)", 167: "Smart Switch", 137: "Surface Downlight (BLD)"}
+PRODUCT_NAMES = {
+    0: "Group",
+    162: "MicroEdge (HLB)",
+    97: "Smart Dimmer",
+    134: "Smart Bulb (A19)",
+    167: "Smart Switch",
+    137: "Surface Downlight (BLD)",
+}
 
 
 class Verb(Enum):
@@ -86,12 +93,15 @@ class Noun(Enum):
     NONE = 255
 
 
+logger = logging.getLogger(__name__)
+
+
 def settings_get(file: str):
     with open(file) as stream:
         try:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
-            print(exc)
+            logger.exception(exc)
 
 
 async def mqtt_register(use_single_device: bool, mqtt: aiomqtt.Client, entity: dict):
@@ -140,8 +150,6 @@ async def mqtt_register_category(use_single_device: bool, settings: dict, list: 
     if settings["import"]:
         include = settings.get("include", None)
         exclude = settings.get("exclude", {})
-        print("exclude")
-        print(exclude)
         for entity in list:
             pid = entity["pid"]
             if (include is not None and pid in include) or pid not in exclude:
@@ -149,7 +157,7 @@ async def mqtt_register_category(use_single_device: bool, settings: dict, list: 
 
 
 async def mqtt_register_lights(settings: dict, location: dict, mqtt: aiomqtt.Client):
-    print("mqtt: Registering devices")
+    logger.info("mqtt: Registering devices")
     use_single_device = settings.get("single_device", False)
     await mqtt_register_category(use_single_device, settings["groups"], location["groups"], mqtt)
 
@@ -193,7 +201,7 @@ def create_packet(target_id: int, verb: Verb, noun: Noun, value_bytes: bytearray
 
 
 async def mesh_write_gatt(mesh: BleakClient, packet: bytes, key: str) -> bool:
-    print("-".join(map(lambda b: format(b, "02x"), packet)))
+    logger.debug("-".join(map(lambda b: format(b, "02x"), packet)))
 
     csrpacket = csrmesh.crypto.make_packet(key, csrmesh.crypto.random_seq(), packet)
     low = csrpacket[:20]
@@ -223,16 +231,16 @@ async def mesh_send(avid: int, raw_payload: str, mqtt: aiomqtt.Client, mesh: Ble
     elif "color_temp" in payload:
         mired = payload["color_temp"]
         kelvin = (int)(1000000 / mired)
-        print(f"mesh: Converting mired({mired}) to kelvin({kelvin})")
+        logger.info(f"mesh: Converting mired({mired}) to kelvin({kelvin})")
         packet = mesh_get_color_temp_packet(avid, kelvin)
     elif "state" in payload:
         packet = mesh_get_brightness_packet(avid, 255 if payload["state"] == "ON" else 0)
     else:
-        print("mesh: Unknown payload")
+        logger.warning("mesh: Unknown payload")
         return False
 
     if await mesh_write_gatt(mesh, packet, key):
-        print("mesh: Acknowedging directly")
+        logger.info("mesh: Acknowedging directly")
 
         parsed = mesh_parse_command(avid, packet)
         if parsed:
@@ -246,24 +254,24 @@ async def mqtt_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str, sett
     async for message in mqtt.messages:
         if message.topic.matches("homeassistant/status"):
             if message.payload.decode() == "online":
-                print("mqtt: Home Assistant back online")
+                logger.info("mqtt: Home Assistant back online")
                 await mqtt_register_lights(settings, location, mqtt)
             else:
-                print("mqtt: Home Assistant offline")
+                logger.info("mqtt: Home Assistant offline")
         elif message.topic.matches("hmd/light/avid/+/command"):
             json = message.payload.decode()
             avid = int(message.topic.value.split("/")[3])
-            print(f"mqtt: received {json} for {avid}")
+            logger.info(f"mqtt: received {json} for {avid}")
             await mesh_send(avid, json, mqtt, mesh, key)
         elif message.topic.matches("avionmqtt"):
             if message.payload.decode() == "poll_mesh":
-                print("mqtt: polling mesh")
+                logger.info("mqtt: polling mesh")
                 await mesh_read_all(mesh, key)
 
 
 async def mqtt_send_state(mqtt: aiomqtt.Client, message: dict):
     # TODO: Only send update if we've actually registered this device
-    print(f"mqtt: sending update for {message}")
+    logger.info(f"mqtt: sending update for {message}")
     avid = message["avid"]
     state_topic = f"hmd/light/avid/{avid}/state"
     if "brightness" in message:
@@ -289,10 +297,10 @@ async def mac_ordered_by_rssi():
 
 
 def mesh_parse_data(target_id: int, data: bytearray) -> dict:
-    print(f"mesh: parsing data {data} from {target_id}")
+    logger.info(f"mesh: parsing data {data} from {target_id}")
 
     if data[0] == 0 and data[1] == 0:
-        print(f"empty data")
+        logger.warning(f"empty data")
         return
 
     try:
@@ -305,7 +313,7 @@ def mesh_parse_data(target_id: int, data: bytearray) -> dict:
         else:
             value_bytes = data[2:]
 
-        print(f"mesh: target_id({target_id}), verb({verb}), noun({noun}), value:{value_bytes})")
+        logger.info(f"mesh: target_id({target_id}), verb({verb}), noun({noun}), value:{value_bytes})")
 
         if noun == Noun.DIMMING:
             brightness = int.from_bytes(value_bytes[1:2], byteorder="big")
@@ -314,22 +322,22 @@ def mesh_parse_data(target_id: int, data: bytearray) -> dict:
             temp = int.from_bytes(value_bytes[2:4], byteorder="big")
             return {"avid": target_id, "color_temp": temp}
         else:
-            print(f"unknown noun {noun}")
+            logger.warning(f"unknown noun {noun}")
     except Exception as e:
-        print(f"mesh: Exception parsing {data} from {target_id}")
+        logger.exception(f"mesh: Exception parsing {data} from {target_id}")
 
 
 # BLEBridge.decryptMessage
 def mesh_parse_command(source: int, data: bytearray):
     hex = "-".join(map(lambda b: format(b, "01x"), data))
-    print(f"mesh: parsing notification {hex}")
+    logger.info(f"mesh: parsing notification {hex}")
     if data[2] == 0x73:
         if data[0] == 0x0 and data[1] == 0x80:
             return mesh_parse_data(source, data[3:])
         else:
             return mesh_parse_data(int.from_bytes(bytes([data[1], data[0]]), byteorder="big"), data[3:])
     else:
-        print(f"Unable to handle {data[2]}")
+        logger.warning(f"Unable to handle {data[2]}")
 
 
 async def mesh_read_all(mesh: BleakClient, key: str):
@@ -350,7 +358,7 @@ async def mesh_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str):
 
     await mesh.start_notify(CHARACTERISTIC_LOW, cb)
     await mesh.start_notify(CHARACTERISTIC_HIGH, cb)
-    print("mesh: reading all")
+    logger.info("mesh: reading all")
     await mesh_read_all(mesh, key)
 
 
@@ -370,17 +378,27 @@ def apply_overrides_from_settings(settings: dict):
 async def main():
     parser = ArgumentParser()
     parser.add_argument("-s", "--settings", dest="settings", help="yaml file to read settings from", metavar="FILE")
+    parser.add_argument(
+        "--log", default="WARNING", help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+    )
     args = parser.parse_args()
+
+    logging.basicConfig(level=args.log.upper(), format="%(levelname)s: %(message)s")
 
     settings = settings_get(args.settings)
     apply_overrides_from_settings(settings)
     avion_settings = settings["avion"]
+    email = avion_settings["email"]
+    password = avion_settings["password"]
     mqtt_settings = settings["mqtt"]
 
-    print("avion: Fetching devices")
-    locations = await http_list_devices(avion_settings["email"], avion_settings["password"])
+    logger.info("avion: Fetching devices")
+    locations = await http_list_devices(email, password)
     assert len(locations) == 1
     location = locations[0]
+    passphrase = location["passphrase"]
+
+    print(f"Resolved devices for {email} with passphrase {passphrase}")
 
     target_devices = [d["mac_address"].lower() for d in location["devices"]]
 
@@ -394,36 +412,35 @@ async def main():
     # connect to mqtt
     while running:
         try:
-            print("mqtt: Connecting to broker")
+            print("connecting to MQTT and mesh")
+            logger.info("mqtt: Connecting to broker")
             async with mqtt:
                 # register the lights
                 await mqtt_register_lights(settings, location, mqtt)
                 # now connect the mesh
-                print("mesh: Connecting to mesh")
+                logger.info("mesh: Connecting to mesh")
                 while running:
                     try:
                         mesh = None
-                        print("mesh: Scanning for devices")
+                        logger.info("mesh: Scanning for devices")
                         for mac in set(await mac_ordered_by_rssi()).intersection(target_devices):
-                            print(f"mesh: connecting to {mac}")
+                            logger.info(f"mesh: connecting to {mac}")
                             try:
                                 ble_device = await BleakScanner.find_device_by_address(mac)
-                                print(ble_device)
                                 if ble_device is None:
-                                    print(f"mesh: Could not find {mac}, moving on to the next device")
+                                    logger.info(f"mesh: Could not find {mac}, moving on to the next device")
                                     continue
                                 mesh = BleakClient(mac)
                                 await mesh.connect()
                             except BleakError as e:
-                                print(f"mesh: Error connecting to {mac}")
+                                logger.warning(f"mesh: Error connecting to {mac}")
                                 continue
                             except Exception as e:
-                                print(f"mesh: Error connecting to {mac}")
+                                logger.warning(f"mesh: Error connecting to {mac}")
                                 continue
-                            print(f"mesh: Connected to {mac}")
-                            key = csrmesh.crypto.generate_key(
-                                location["passphrase"].encode("ascii") + b"\x00\x4d\x43\x50"
-                            )
+                            logger.info(f"mesh: Connected to {mac}")
+                            print("Connected to MQTT and mesh")
+                            key = csrmesh.crypto.generate_key(passphrase.encode("ascii") + b"\x00\x4d\x43\x50")
                             # subscribe to updates from the mesh
                             await mesh_subscribe(mqtt, mesh, key)
                             # subscribe to commands from mqtt (this also keeps the loop going)
@@ -431,26 +448,25 @@ async def main():
 
                     except asyncio.CancelledError:
                         running = False
+                        print("Terminating")
 
                     except BleakError as e:
-                        print("mesh: Error connecting to device")
+                        logger.warning("mesh: Error connecting to device")
 
                     except Exception as e:
-                        print("mesh: Exception")
-                        # this isn't printing
-                        print(e)
+                        logger.exception("mesh: Exception")
 
                     finally:
-                        print("mesh: Done")
+                        logger.info("mesh: Done")
                         if mesh and mesh.is_connected:
                             await mesh.disconnect()
-                            print(f"mesh: Disconnected from {mac}")
+                            logger.info(f"mesh: Disconnected from {mac}")
 
         except aiomqtt.MqttError:
-            print(f"mqtt: Connection lost; Reconnecting in {MQTT_RETRY_INTERVAL} seconds ...")
+            logger.warning(f"mqtt: Connection lost; Reconnecting in {MQTT_RETRY_INTERVAL} seconds ...")
             await asyncio.sleep(MQTT_RETRY_INTERVAL)
         finally:
-            print("mqtt: Done")
+            logger.info("mqtt: Done")
 
 
 # create a new event loop (low-level api)
