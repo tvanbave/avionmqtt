@@ -19,14 +19,17 @@ MQTT_RETRY_INTERVAL = 5
 CHARACTERISTIC_LOW = "c4edc000-9daf-11e3-8003-00025b000b00"
 CHARACTERISTIC_HIGH = "c4edc000-9daf-11e3-8004-00025b000b00"
 
-CAPABILITIES = {"dimming": {0, 162, 134, 97, 137}, "color_temp": {0, 162, 134, 137}}
+CAPABILITIES = {"dimming": {0, 90, 93, 94, 97, 134, 137, 162}, "color_temp": {0, 93, 134, 137, 162}}
 PRODUCT_NAMES = {
     0: "Group",
-    162: "MicroEdge (HLB)",
+    90: "Lamp Dimmer",
+    93: "Recessed Downlight (RL)",
+    94: "Light Adapter",
     97: "Smart Dimmer",
     134: "Smart Bulb (A19)",
-    167: "Smart Switch",
     137: "Surface Downlight (BLD)",
+    162: "MicroEdge (HLB)",
+    167: "Smart Switch",
 }
 
 
