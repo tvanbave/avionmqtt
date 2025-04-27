@@ -8,4 +8,5 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ./settings.yaml:/app/settings.yaml
+      - /var/run/dbus:/var/run/dbus
     privileged: true     # BLE needs full device access
