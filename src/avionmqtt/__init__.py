@@ -139,6 +139,8 @@ def settings_get(file: str):
 
 
 async def mqtt_register(use_single_device: bool, mqtt: aiomqtt.Client, entity: dict):
+    import re  # <-- Move import inside or keep at top of file
+
     product_id = entity["product_id"]
     pid = entity["pid"]
     avid = entity["avid"]
@@ -160,6 +162,7 @@ async def mqtt_register(use_single_device: bool, mqtt: aiomqtt.Client, entity: d
         "json_attributes_topic": f"hmd/light/avid/{avid}/attributes",
         "command_topic": f"hmd/light/avid/{avid}/command",
     }
+
     if use_single_device:
         config["name"] = name
         config["device"] = {"identifiers": ["avionmqtt"], "name": "Avi-on MQTT Bridge"}
@@ -172,23 +175,20 @@ async def mqtt_register(use_single_device: bool, mqtt: aiomqtt.Client, entity: d
             "serial_number": pid,
         }
 
-import re  # make sure this is at top of the file
+    # Fix object_id based on light name
+    friendly_name = name or f"Avi-on Light {avid}"
+    object_id = re.sub(r'[^a-z0-9_]', '', friendly_name.lower().replace(" ", "_"))
 
-if product_id in CAPABILITIES["color_temp"]:
-    config["supported_color_modes"] = ["color_temp"]
+    config["object_id"] = object_id
+    config["name"] = friendly_name
 
-# NEW: fix object_id based on light name
-friendly_name = name or f"Avi-on Light {avid}"
-object_id = re.sub(r'[^a-z0-9_]', '', friendly_name.lower().replace(" ", "_"))
+    if product_id in CAPABILITIES["color_temp"]:
+        config["supported_color_modes"] = ["color_temp"]
 
-# set correct object_id
-config["object_id"] = object_id
-config["name"] = friendly_name
-
-await mqtt.publish(
-    f"homeassistant/light/{object_id}/config",
-    json.dumps(config),
-)
+    await mqtt.publish(
+        f"homeassistant/light/{object_id}/config",
+        json.dumps(config),
+    )
 
 
 async def mqtt_register_category(use_single_device: bool, settings: dict, list: List[dict], mqtt: aiomqtt.Client):
