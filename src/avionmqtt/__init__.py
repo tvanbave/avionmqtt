@@ -17,6 +17,8 @@ from avionhttp import http_list_devices
 import json
 from webserver import start_webserver, device_list
 import threading
+import signal
+import asyncio
 
 def publish_discovery(mqtt_client, device):
     """Publish Home Assistant MQTT Discovery for an Avi-on light."""
@@ -427,13 +429,30 @@ def apply_overrides_from_settings(settings: dict):
             for product_id in color_temp_overrides:
                 CAPABILITIES["color_temp"].add(product_id)
 
+async def shutdown_handler(mqtt: aiomqtt.Client, devices: list):
+    logger.info("Shutting down, setting devices offline...")
+    for device in devices:
+        avid = device["avid"]
+        await mqtt.publish(
+            f"hmd/light/avid/{avid}/availability",
+            "offline",
+            retain=True,
+        )
+
+async def shutdown_handler(mqtt: aiomqtt.Client, devices: list):
+    logger.info("Shutting down, setting devices offline...")
+    for device in devices:
+        avid = device["mac_address"].lower().replace(":", "")
+        await mqtt.publish(
+            f"hmd/light/avid/{avid}/availability",
+            "offline",
+            retain=True,
+        )
 
 async def main():
     parser = ArgumentParser()
     parser.add_argument("-s", "--settings", dest="settings", help="yaml file to read settings from", metavar="FILE")
-    parser.add_argument(
-        "--log", default="WARNING", help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
-    )
+    parser.add_argument("--log", default="WARNING", help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
     args = parser.parse_args()
 
     logging.basicConfig(level=args.log.upper(), format="%(levelname)s: %(message)s")
@@ -474,7 +493,14 @@ async def main():
 
     # Start the Flask webserver in background
     threading.Thread(target=start_webserver, daemon=True).start()
-    
+
+    # Add shutdown signal handlers
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(
+            sig, lambda: asyncio.create_task(shutdown_handler(mqtt, device_list))
+        )
+
     # connect to mqtt
     while running:
         try:
@@ -498,10 +524,10 @@ async def main():
                                     continue
                                 mesh = BleakClient(mac)
                                 await mesh.connect()
-                            except BleakError as e:
+                            except BleakError:
                                 logger.warning(f"mesh: Error connecting to {mac}")
                                 continue
-                            except Exception as e:
+                            except Exception:
                                 logger.warning(f"mesh: Error connecting to {mac}")
                                 continue
                             logger.info(f"mesh: Connected to {mac}")
@@ -516,10 +542,10 @@ async def main():
                         running = False
                         print("Terminating")
 
-                    except BleakError as e:
+                    except BleakError:
                         logger.warning("mesh: Error connecting to device")
 
-                    except Exception as e:
+                    except Exception:
                         logger.exception("mesh: Exception")
 
                     finally:
@@ -533,7 +559,6 @@ async def main():
             await asyncio.sleep(MQTT_RETRY_INTERVAL)
         finally:
             logger.info("mqtt: Done")
-
 
 # create a new event loop (low-level api)
 run(main())
