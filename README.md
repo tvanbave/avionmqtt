@@ -30,7 +30,7 @@ sudo apt install docker-compose-plugin
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/avionmqtt.git
+git clone https://github.com/tvanbave/avionmqtt.git
 cd avionmqtt
 ```
 
