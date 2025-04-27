@@ -435,11 +435,11 @@ async def main():
     # Populate device list for the webserver
     device_list.clear()
     for device in location["devices"]:
-    device_list.append({
-        "name": device.get("name"),
-        "mac_address": device.get("mac_address"),
-        "product_id": device.get("product_id"),
-    })
+        device_list.append({
+            "name": device.get("name"),
+            "mac_address": device.get("mac_address"),
+            "product_id": device.get("product_id"),
+        })
 
     print(f"Resolved devices for {email} with passphrase {passphrase}")
 
