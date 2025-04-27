@@ -1,74 +1,53 @@
-# avionmqtt
+AvionMQTT (Docker Version)
 
-A python library to bridge between Avi-on based lights and Home Assistant using MQTT
+AvionMQTT is a lightweight bridge between Avi-on Bluetooth mesh devices and Home Assistant via MQTT.
 
-## support
-This should support any devices that uses Avi-on's technology, including Halo Home and GE branded BLE lights (both discontinued, but both supported by Avi-on's cloud infra and mobile apps).
+This version runs inside Docker and includes:
+	•	Auto-discovery of lights in Home Assistant
+	•	Friendly names and devices properly registered
+	•	Simple web interface to view discovered devices
+	•	Proper availability (online/offline) reporting to Home Assistant
+	•	Graceful shutdown handling
 
-# features
-- creates lights for devices and groups in Home Assistant
-  - supports creating meta lights such as for 'all', usefull for automation of color temperature
-- supports changing brightness and color temperature
-  - for:
-    - individidual devices
-    - groups
-    - the entire mesh at once
-  - color temperature can be set *without* turning on the light
-- polls the whole network on startup to get the current state of each device
-- updates Home Assistant whenever devices are updated externally
+ Features
+	•	MQTT Auto-Discovery
+Devices show up automatically in Home Assistant with correct names and icons.
+	•	Web Dashboard
+Basic device viewer available at http://<pi-ip>:5000/.
+	•	Dockerized
+No system packages or virtualenv needed — runs completely isolated.
+	•	Bluetooth and DBus access
+Uses host networking and privileged access for Bluetooth scanning.
 
-# how to use
+Installation
 
-```bash
-# if bluepy fails to compile, try installing libglib2.0-dev first (apt-get install libglib2.0-dev)
-pip install avionmqtt
-python -m avionmqtt -s settings.yaml --log=DEBUG
-```
- ## service install script
- See [Running as a service.md](resources/Running%20as%20a%20service.md) for how to install this as a service using systemd.
+Requirements
+	•	Raspberry Pi (or any Linux host with BLE)
+	•	Docker + Docker Compose
+	•	Home Assistant with an MQTT broker (e.g., Mosquitto)
 
-## settings.yaml
-
-```yaml
+ Setup
+	1.	Clone the repository
+ 	2.	Update settings.yaml
+  Create or edit settings.yaml in the root directory:
 avion:
-    email: email@example.com
-    password: ********
+  email: "your-avi-on-email"
+  password: "your-avi-on-password"
 
 mqtt:
-    host: mqtt_broker.local
-    username: avion
-    password: avion
+  host: "mqtt-broker-ip"
+  username: "your-mqtt-username"
+  password: "your-mqtt-password"
 
-devices:
-    import: true
-    # If set, include only these pids when importing devices
-    include:
-      - abcde...
-      - bcdef...
-    # If set, exclude these pids when importing devices
-    exclude:
-      - abcde...
-      - bcdef...
-    # If set, automatically adds all devices part of a group to the exclude list
-    exclude_in_group: true
+	3.	Start the container
+   docker compose up -d --build
 
-groups:
-    import: true
-    include:
-    exclude:
+   	4.	Access
 
-# Controls if a single device, or one per light is created. Defaults to false.
-single_device: true
+	•	Web Dashboard:
+http://yourip:5000/
+	•	Devices will automatically appear in Home Assistant under Settings → Devices & Services → Devices.
 
-# If you need to add additional overrides to dimmable or color_temp capabilities, then you can do so here.
-# If new products are discovered to work with this library, create an issue on github so that it can be added in.
-capabilities_overrides:
-  dimming:
-    - 123
-    - 234
-  color_temp:
-    - 123
-```
-
-# acknowledgements
-This project would not have been possible without the original work done in https://github.com/nkaminski/csrmesh and https://github.com/nayaverdier/halohome
+Credits
+	•	Based on the excellent work from fusioncha0s/avionmqtt
+	•	Extended for full Docker support and Home Assistant improvements
