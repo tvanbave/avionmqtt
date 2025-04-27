@@ -1,118 +1,144 @@
-AvionMQTT
+# AvionMQTT
 
-AvionMQTT bridges Avi-on Bluetooth Mesh lights to MQTT for use in Home Assistant and other systems.
+Avi-on Cooper Halo Home to MQTT Bridge.
 
-Now with Docker support and a built-in Flask web UI to view connected devices!
+Now with:
+- 🚀 Docker support
+- 🏠 Automatic Home Assistant MQTT Discovery
+- 🌐 Basic built-in Web Server for viewing connected devices
 
-Features
+---
 
-🦿 Discovers Avi-on devices automatically
+## Quick Start
 
-🔄 Publishes each Avi-on device as a separate MQTT Light in Home Assistant
+### 1. Install Docker on your Raspberry Pi (or any Linux)
 
-📋 Auto-populates correct names, IDs, and capabilities (e.g., brightness, color temp)
+```bash
+curl -sSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+```
 
-👨‍🚀 Publishes MQTT availability topics (online/offline)
+Install Docker Compose plugin (optional):
 
-🐳 Runs easily inside Docker (with host networking and BLE support)
+```bash
+sudo apt install docker-compose-plugin
+```
 
-🌐 Web interface (/devices) to view discovered Avi-on devices
+---
 
-🛡️ Clean shutdown and resource management
+### 2. Clone the repository
 
-Requirements
-
-MQTT broker (e.g., Mosquitto)
-
-Home Assistant (optional, but recommended)
-
-Raspberry Pi 3/4 or any Linux server with BLE
-
-Docker and Docker Compose installed
-
-Installation
-
-Clone the repository:
-
+```bash
 git clone https://github.com/yourusername/avionmqtt.git
 cd avionmqtt
+```
 
-1. Configure settings
+---
 
-Create or edit settings.yaml:
+### 3. Set up your settings.yaml
 
+Create `settings.yaml` based on your environment. Example:
+
+```yaml
 avion:
-  email: "your-avi-on-account@example.com"
-  password: "your-password"
+  email: "your-email@example.com"
+  password: "your-avion-password"
 
 mqtt:
-  host: "your-mqtt-broker.local"
-  username: "mqtt-user"
-  password: "mqtt-pass"
+  host: "your-mqtt-broker"
+  username: "your-mqtt-username"
+  password: "your-mqtt-password"
 
-2. Build and run using Docker Compose
+devices:
+  import: true
+  include: []
+  exclude: []
+  exclude_in_group: false
 
+groups:
+  import: true
+  include: []
+  exclude: []
+```
+
+---
+
+### 4. Build and run with Docker Compose
+
+```bash
 sudo docker compose up -d --build
+```
 
-Notes:
+The container will automatically:
+- Connect to Avi-on
+- Discover your devices
+- Publish MQTT discovery topics
+- Serve a basic web UI at `http://<your-pi-ip>:5000`
 
-Must use network_mode: host (required for Bluetooth).
+---
 
-The container is marked privileged: true to allow BLE.
+## Notes
 
-Settings are mounted into the container via a volume.
+- `network_mode: host` and `privileged: true` are required for BLE scanning.
+- BLE scanning inside Docker uses `/var/run/dbus`.
+- Web server shows device names, MACs, and product IDs.
+- Lights automatically appear in Home Assistant with friendly names.
+- MQTT availability topic (`online`/`offline`) is also published.
 
-Accessing the Web UI
+---
 
-Once running, access the web interface to view detected devices:
+## Home Assistant Discovery
 
-http://<your-pi-ip>:5000/devices
+Entities are created automatically using the device name as the `object_id`.  
+They are shown as standard MQTT lights.
 
-Example:
+Each device is created as a separate device in Home Assistant, not grouped under a bridge.
 
-http://192.168.1.83:5000/devices
-
-Home Assistant Integration
-
-Devices are discovered automatically via MQTT discovery.Each device will appear under Settings → Devices → Integrations → MQTT.
-
-Example Entity:
-
+Example entity name:
+```text
 light.master_closet_1
+```
 
-Each light publishes:
+---
 
-State topic: hmd/light/avid/<avid>/state
+## Web Server
 
-Command topic: hmd/light/avid/<avid>/command
+While the bridge runs, you can view your device list here:
 
-Attributes topic: hmd/light/avid/<avid>/attributes
+```text
+http://<your-pi-ip>:5000/devices
+```
 
-Availability topic: hmd/light/avid/<avid>/availability
+Example output:
 
-Development Notes
+```json
+[
+  {"name": "Master Closet 1", "mac_address": "1c:d6:bd:90:68:cd", "product_id": 93},
+  {"name": "Master Closet 2", "mac_address": "1c:d6:bd:9a:34:a8", "product_id": 93}
+]
+```
 
-Container runs Flask using the built-in server (for now).
+---
 
-In production, consider running Flask behind a WSGI server like gunicorn.
+## Changes from the Original
 
-Full async event loop management using aiomqtt and Bleak.
+- Dockerized (`Dockerfile` and `docker-compose.yml`).
+- Home Assistant MQTT Discovery integration.
+- Friendly `object_id` and `name` generation from light names.
+- Separate device registrations for each light.
+- Added availability ("online") MQTT topic.
+- Flask web server for device listing.
 
-TODO / Roadmap
+---
 
+## Todo
 
+- Web interface for controlling devices.
+- Improved error handling and reconnect logic.
 
-License
+---
+
+## License
 
 MIT License
-
-🚀 Quick Start Command Summary
-
-git clone https://github.com/yourusername/avionmqtt.git
-cd avionmqtt
-nano settings.yaml
-sudo docker compose up -d --build
-
-Then visit: http://<your-ip>:5000/devices
-
-
