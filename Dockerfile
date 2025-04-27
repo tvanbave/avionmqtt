@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Set the Python path to include /app/src
+ENV PYTHONPATH=/app/src
+
 # Copy your app
 COPY . /app
 
