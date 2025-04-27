@@ -157,7 +157,8 @@ async def mqtt_register(use_single_device: bool, mqtt: aiomqtt.Client, entity: d
         "brightness": product_id in CAPABILITIES["dimming"],
         "color_mode": product_id in CAPABILITIES["color_temp"],
         "effect": False,
-        "retain": False,
+        "availability_mode": "latest",
+        "availability_topic": f"hmd/light/avid/{avid}/availability",
         "state_topic": f"hmd/light/avid/{avid}/state",
         "json_attributes_topic": f"hmd/light/avid/{avid}/attributes",
         "command_topic": f"hmd/light/avid/{avid}/command",
@@ -188,6 +189,13 @@ async def mqtt_register(use_single_device: bool, mqtt: aiomqtt.Client, entity: d
     await mqtt.publish(
         f"homeassistant/light/{object_id}/config",
         json.dumps(config),
+        retain=True,
+    )
+
+    await mqtt.publish(
+        f"hmd/light/avid/{avid}/availability",
+        "online",
+        retain=True,
     )
 
 
