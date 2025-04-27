@@ -14,6 +14,35 @@ import signal
 import sys
 from aiorun import run
 from avionhttp import http_list_devices
+import json
+
+def publish_discovery(mqtt_client, device):
+    """Publish Home Assistant MQTT Discovery for an Avi-on light."""
+    mac_id = device.mac_address.replace(":", "_")
+
+    discovery_topic = f"homeassistant/light/avionmqtt_{mac_id}/config"
+
+    payload = {
+        "schema": "json",
+        "name": device.name or f"Avi-on Light {device.mac_address}",
+        "command_topic": f"avionmqtt/{device.mac_address}/set",
+        "state_topic": f"avionmqtt/{device.mac_address}/state",
+        "brightness": True,
+        "color_temp": True,
+        "device": {
+            "identifiers": [f"avionmqtt_{device.mac_address}"],
+            "name": device.name or f"Avi-on Light {device.mac_address}",
+            "manufacturer": "Avi-on",
+            "model": "BLE Light",
+        },
+        "unique_id": f"avionmqtt_{mac_id}",
+    }
+
+    mqtt_client.publish(
+        discovery_topic,
+        json.dumps(payload),
+        retain=True
+    )
 
 MQTT_RETRY_INTERVAL = 5
 CHARACTERISTIC_LOW = "c4edc000-9daf-11e3-8003-00025b000b00"
