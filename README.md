@@ -6,6 +6,7 @@ Now with:
 - 🚀 Docker support
 - 🏠 Automatic Home Assistant MQTT Discovery
 - 🌐 Basic built-in Web Server for viewing connected devices
+- Proper device names
 
 ---
 
