@@ -15,6 +15,8 @@ import sys
 from aiorun import run
 from avionhttp import http_list_devices
 import json
+from .webserver import start_webserver, device_list
+import threading
 
 def publish_discovery(mqtt_client, device):
     """Publish Home Assistant MQTT Discovery for an Avi-on light."""
@@ -430,6 +432,15 @@ async def main():
     location = locations[0]
     passphrase = location["passphrase"]
 
+    # Populate device list for the webserver
+    device_list.clear()
+    for device in location["devices"]:
+    device_list.append({
+        "name": device.get("name"),
+        "mac_address": device.get("mac_address"),
+        "product_id": device.get("product_id"),
+    })
+
     print(f"Resolved devices for {email} with passphrase {passphrase}")
 
     target_devices = [d["mac_address"].lower() for d in location["devices"]]
@@ -441,6 +452,10 @@ async def main():
     )
 
     running = True
+
+    # Start the Flask webserver in background
+    threading.Thread(target=start_webserver, daemon=True).start()
+    
     # connect to mqtt
     while running:
         try:
