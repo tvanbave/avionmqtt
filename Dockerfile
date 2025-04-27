@@ -2,11 +2,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy your app into the container
+# Install required system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    bluez \
+    libglib2.0-dev \
+    make \
+    gcc \
+    g++ \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy your app
 COPY . /app
 
-# Install Python requirements
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Default command
+# Start the app
 CMD ["python", "src/avionmqtt/__init__.py", "-s", "settings.yaml"]
