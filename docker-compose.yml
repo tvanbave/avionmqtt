@@ -1,0 +1,11 @@
+services:
+  avionmqtt:
+    build: .
+    container_name: avionmqtt
+    restart: unless-stopped
+    network_mode: host   # BLE needs host network on Linux
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./settings.yaml:/app/settings.yaml
+    privileged: true     # BLE needs full device access
