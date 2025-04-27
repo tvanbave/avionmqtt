@@ -15,7 +15,7 @@ import sys
 from aiorun import run
 from avionhttp import http_list_devices
 import json
-from .webserver import start_webserver, device_list
+from webserver import start_webserver, device_list
 import threading
 
 def publish_discovery(mqtt_client, device):
