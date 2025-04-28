@@ -1,26 +1,27 @@
+# Use Python 3.11 slim image
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-# Install required system packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    bluez \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     libglib2.0-dev \
-    make \
-    gcc \
-    g++ \
-    python3-dev \
+    dbus \
+    bluez \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the Python path to include /app/src
-ENV PYTHONPATH=/app/src
+# Copy requirements first and install (caches better)
+COPY requirements.txt .
 
-# Copy your app
-COPY . /app
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Start the app
-CMD ["python", "src/avionmqtt/__init__.py", "-s", "settings.yaml"]
+# Now copy the actual application code
+COPY . .
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Start command
+CMD ["python", "-m", "avionmqtt"]
