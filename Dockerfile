@@ -24,6 +24,8 @@ RUN pip install --no-deps csrmesh
 
 RUN pip install pycryptodome && pip install pycryptodomex
 
+RUN pip install bluepy
+
 # Now copy the actual application code
 COPY . .
 
