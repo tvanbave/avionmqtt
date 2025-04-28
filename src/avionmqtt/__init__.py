@@ -15,10 +15,22 @@ import sys
 from aiorun import run
 from avionhttp import http_list_devices
 import json
-from webserver import start_webserver, device_list
+from .webserver import start_webserver, LOG_BUFFER
 import threading
 import signal
 import asyncio
+
+def add_log_entry(text):
+    from .webserver import LOG_BUFFER, LOG_LOCK
+    with LOG_LOCK:
+        LOG_BUFFER.append(text)
+        if len(LOG_BUFFER) > 500:
+            LOG_BUFFER.pop(0)
+
+async def handle_ble_notification(sender, data):
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    add_log_entry(f"[{timestamp}] BLE from {sender}: {data.hex()}")
 
 def publish_discovery(mqtt_client, device):
     """Publish Home Assistant MQTT Discovery for an Avi-on light."""
@@ -401,10 +413,14 @@ async def mesh_read_all(mesh: BleakClient, key: str):
 
 
 async def mesh_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str):
-    async def cb(charactheristic: BleakGATTCharacteristic, data: bytearray):
-        if charactheristic.uuid == CHARACTERISTIC_LOW:
+    async def cb(characteristic: BleakGATTCharacteristic, data: bytearray):
+        # Log raw BLE
+        await handle_ble_notification(characteristic.uuid, data)
+
+        # Process Avi-on mesh packets
+        if characteristic.uuid == CHARACTERISTIC_LOW:
             mesh.low_bytes = data
-        elif charactheristic.uuid == CHARACTERISTIC_HIGH:
+        elif characteristic.uuid == CHARACTERISTIC_HIGH:
             encrypted = bytes([*mesh.low_bytes, *data])
             decoded = csrmesh.crypto.decrypt_packet(key, encrypted)
             parsed = mesh_parse_command(decoded["source"], decoded["decpayload"])
@@ -413,6 +429,7 @@ async def mesh_subscribe(mqtt: aiomqtt.Client, mesh: BleakClient, key: str):
 
     await mesh.start_notify(CHARACTERISTIC_LOW, cb)
     await mesh.start_notify(CHARACTERISTIC_HIGH, cb)
+
     logger.info("mesh: reading all")
     await mesh_read_all(mesh, key)
 
@@ -428,16 +445,6 @@ def apply_overrides_from_settings(settings: dict):
         if color_temp_overrides is not None:
             for product_id in color_temp_overrides:
                 CAPABILITIES["color_temp"].add(product_id)
-
-async def shutdown_handler(mqtt: aiomqtt.Client, devices: list):
-    logger.info("Shutting down, setting devices offline...")
-    for device in devices:
-        avid = device["avid"]
-        await mqtt.publish(
-            f"hmd/light/avid/{avid}/availability",
-            "offline",
-            retain=True,
-        )
 
 async def shutdown_handler(mqtt: aiomqtt.Client, devices: list):
     logger.info("Shutting down, setting devices offline...")
