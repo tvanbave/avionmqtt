@@ -4,3 +4,4 @@ PyYAML
 aiorun
 Flask
 aiohttp
+pycryptodome
