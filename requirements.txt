@@ -1,7 +1,7 @@
 aiomqtt
 bleak
 PyYAML
-csrmesh
+csrmesh --no-deps
 aiorun
 Flask
 aiohttp
