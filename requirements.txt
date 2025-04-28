@@ -5,3 +5,4 @@ aiorun
 Flask
 aiohttp
 pycryptodome
+pycryptodomex
