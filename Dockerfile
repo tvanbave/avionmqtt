@@ -22,6 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Special install csrmesh separately without pulling bluepy
 RUN pip install --no-deps csrmesh
 
+RUN pip install pycryptodome && pip install pycryptodomex
+
 # Now copy the actual application code
 COPY . .
 
