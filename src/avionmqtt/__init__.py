@@ -15,7 +15,7 @@ import sys
 from aiorun import run
 from avionhttp import http_list_devices
 import json
-from .webserver import start_webserver, LOG_BUFFER
+from webserver import start_webserver, LOG_BUFFER
 import threading
 import signal
 import asyncio
