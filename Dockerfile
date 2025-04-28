@@ -27,6 +27,7 @@ COPY . .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/src
 
 # Start command
 CMD ["python", "-m", "avionmqtt"]
