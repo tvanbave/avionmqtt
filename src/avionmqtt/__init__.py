@@ -14,14 +14,10 @@ import signal
 import sys
 from aiorun import run
 from avionhttp import http_list_devices
-import json
-from webserver import start_webserver, LOG_BUFFER
+from .webserver import start_webserver, LOG_BUFFER, LOG_LOCK, device_list
 import threading
-import signal
-import asyncio
 
 def add_log_entry(text):
-    from .webserver import LOG_BUFFER, LOG_LOCK
     with LOG_LOCK:
         LOG_BUFFER.append(text)
         if len(LOG_BUFFER) > 500:
