@@ -4,6 +4,7 @@ from threading import Lock
 app = Flask(__name__)
 LOG_BUFFER = []
 LOG_LOCK = Lock()
+device_list = []
 
 LOG_HTML = """
 <html>
